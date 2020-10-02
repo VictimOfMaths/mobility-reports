@@ -1,0 +1,105 @@
+---
+title: "**Deall data symudedd Google yn ôl awdurdod lleol yng Nghymru**"
+params:
+  google_path: ""
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+library(tidyverse)
+library(zoo)
+
+google_path <- params$google_path
+
+source("prepare_data_la.r")
+
+```
+
+```{r newid_data, include=FALSE, echo=FALSE}
+wales_la_rolling_avg <- wales_la_rolling_avg %>%
+    mutate(
+        sub_region_1 = case_when(
+            sub_region_1 == "Bridgend County Borough" ~ "Bwrdeistref sirol Pen-y-bont ar Ogwr",
+            sub_region_1 == "Caerphilly County Borough" ~ "Bwrdeistref sirol Caerffili",
+            sub_region_1 == "Cardiff" ~ "Caerdydd",
+            sub_region_1 == "Carmarthenshire" ~ "Sir Gaerfyrddin",
+            sub_region_1 == "Conwy Principal Area" ~ "Prif Ardal Conwy",
+            sub_region_1 == "Denbighshire" ~ "Sir Ddinbych",
+            sub_region_1 == "Flintshire" ~ "Sir y Fflint",
+            sub_region_1 == "Isle of Anglesey" ~ "Ynys Môn",
+            sub_region_1 == "Merthyr Tydfil County Borough" ~ "Bwrdeistref sirol Merthyr Tudful",
+            sub_region_1 == "Monmouthshire" ~ "Sir Fynwy",
+            sub_region_1 == "Neath Port Talbot Principle Area" ~ "Prif Ardal Castell-nedd Port Talbot",
+            sub_region_1 == "Newport" ~ "Casnewydd",
+            sub_region_1 == "Pembrokeshire" ~ "Sir Benfro",
+            sub_region_1 == "Rhondda Cynon Taff" ~ "Rhondda Cynon Taf",
+            sub_region_1 == "Swansea" ~ "Abertawe",
+            sub_region_1 == "Torfaen Principal Area" ~ "Prif ardal Torfaen",
+            sub_region_1 == "Vale of Glamorgan" ~ "Bro Morgannwg",
+            sub_region_1 == "Wrexham Principal Area" ~ "Prif ardal Wrecsam",
+            TRUE ~ sub_region_1
+        ),
+        variable = case_when(
+            variable == "Public transport" ~ "Trafnidiaeth gyhoeddus",
+            variable == "Retail and recreation" ~ "Siopa a hamdden",
+            variable == "Supermarkets and pharmacy" ~ "Archfarchnadoedd a fferyllfeydd",
+            variable == "Workplaces" ~ "Gweithleoedd"
+        )
+    )
+
+
+
+Sys.setlocale(locale = "Welsh")
+```
+<br>
+
+## **Cyflwyniad**
+
+Mae’r siartiau hyn yn dangos sut mae symudedd wedi newid yn ôl awdurdod lleol yng Nghymru yn ystod pandemig COVID-19 gan ddefnyddio data a ryddhawyd gan [Google](https://www.google.com/covid19/mobility/). Defnyddiwyd cyfartaledd 7 diwrnod ym mhob enghraifft. Mae’r wybodaeth yn cael ei chreu gyda setiau data cyfanredol, dienw oddi wrth ddefnyddwyr sydd wedi galluogi’r gosodiad ar eu dyfeisiau symudol sy’n dangos eu lleoliad. Y gwerth canolrifol yw’r gwaelodlin, ar gyfer y diwrnod cyfatebol o’r wythnos, yn ystod y cyfnod 5 wythnos o 3 Ionawr - 6 Chwefror 2020. Mae’r data i’w cael wedi’u dadansoddi yn ôl pedwar maes: siopa a hamdden, archfarchnadoedd a fferyllfeydd, gweithleoedd, a thrafnidiaeth gyhoeddus. Gan nad oes gan rai awdurdodau lleol ddata ar gyfer ystod eang o ddyddiadau ar gyfer parciau ac ardaloedd preswyl, nid yw’r data hynny yn cael eu dangos. Tynnwyd enwau’r ardaloedd o Google ac nid ydynt yn adlewyrchu enwau safonol yr awdurdodau lleol (ee Prif Ardal Conwy).
+
+
+<br>
+<br>
+
+```{r plot_function, echo=FALSE}
+
+plot_mobility <- function(la) {
+  
+  df <- wales_la_rolling_avg %>%
+    filter(sub_region_1 == la)
+  
+  df %>%
+    ggplot() +
+    geom_line(aes(x = date, y = rolling_avg, col = paste0("Cyfartaledd ", la)), size = 1) +
+    geom_line(aes(x = date, y = var_avg, col = "Cyfartaledd Cymru gyfan"), size = 1) +
+    labs(
+      title = paste0("Data symudedd Google ar gyfer ", la),
+      x = "Dyddiad",
+      y = "% newid o'r gwaelodlin\n (cyfartaledd treigl 7 diwrnod)",
+      caption = 'Ffynhonnell: Adroddiadau ar Symudedd Cymunedol COVID-19 Google, Google LLC.',
+      colour = ""
+    ) +
+    scale_x_date(date_breaks = "2 months", date_labels = "%B") +
+    scale_color_manual(
+        breaks = c("Cyfartaledd Cymru gyfan", paste0("Cyfartaledd ", la)),
+        values = c("#F8766D", "#00BFC4")
+    ) +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "grey", size = 1) +
+    theme_minimal() +
+    theme(plot.title = element_text(size = 12, margin = margin(10, 0, 10, 0)),
+          axis.text.x = element_text(angle=50, size=6, vjust = 0.6),
+          strip.text = element_text(size=7),
+          legend.position = "bottom"
+          ) +
+    facet_wrap(~variable)
+  
+}
+
+```
+
+```{r}
+for(local_authority in unique(wales_la_rolling_avg$sub_region_1)) {
+  print(plot_mobility(local_authority))
+}
+```

@@ -1,0 +1,62 @@
+---
+title: "**Visualising Google mobility data by local authority in Wales**"
+params:
+  google_path: ""
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+library(tidyverse)
+library(zoo)
+
+google_path <- params$google_path
+
+source("prepare_data_la.r")
+```
+<br>
+
+## **Introduction**
+
+These charts show how mobility has changed by local authority in Wales during the covid-19 pandemic using data that has been made available from [Google](https://www.google.com/covid19/mobility/). A 7 day average has been used throughout. The information is created with aggregated, anonymized sets of data from users who have turned on the Location History setting. The baseline is the median value, for the corresponding day of the week, during the 5-week period Jan 3–Feb 6, 2020. The data are available broken down by four areas: retail & recreation, supermarkets & pharmacy, workplaces, and public transport. Due to a number of local authorities not having data for a large range of dates for parks and residential areas, those data are not shown. The area names have been taken from Google and do not reflect standard local authority names (e.g Conwy Principal Area).
+
+<br>
+<br>
+
+```{r plot_function, echo=FALSE}
+
+plot_mobility <- function(la) {
+  
+  df <- wales_la_rolling_avg %>%
+    filter(sub_region_1 == la)
+  
+  df %>%
+    ggplot() +
+    geom_line(aes(x = date, y = rolling_avg, col = paste0(la,  " average")), size = 1) +
+    geom_line(aes(x = date, y = var_avg, col = "All Wales average"), size = 1) +
+    labs(
+      title = paste0("Google mobility data for ", la),
+      x = "Date",
+      y = "% from baseline\n (7 day average)",
+      caption = 'Source: Google LLC "Google COVID-19 Community Mobility Reports."',
+      colour = ""
+    ) +
+    scale_x_date(date_breaks = "2 months", date_labels = "%B") +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "grey", size = 1) +
+    theme_minimal() +
+    theme(plot.title = element_text(size = 12, margin = margin(10, 0, 10, 0)),
+          axis.text.x = element_text(angle=50, size=6, vjust = 0.6),
+          strip.text = element_text(size=7),
+          legend.position = "bottom"
+          ) +
+    facet_wrap(~variable)
+  
+}
+
+```
+
+```{r}
+for(local_authority in unique(wales_la_rolling_avg$sub_region_1)) {
+  print(plot_mobility(local_authority))
+}
+```

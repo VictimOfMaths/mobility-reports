@@ -1,0 +1,345 @@
+---
+title: "**Deall data symudedd y boblogaeth Google, Apple, a Facebook**"
+params:
+    google_path: ""
+    apple_path: ""
+    facebook_path: ""
+    save_plots_to_jpg: FALSE
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE,
+                      fig.width = 10, fig.height = 8)
+
+Sys.setlocale(locale = "Welsh")
+
+google_path <- params$google_path
+apple_path <- params$apple_path
+facebook_path <- params$facebook_path
+
+save_plots_to_jpg <- params$save_plots_to_jpg
+
+source("prepare_data_national.r")
+```
+
+```{r newid_data, include=FALSE, echo = FALSE}
+google_wales_rolling_avg <- google_wales_rolling_avg %>%
+    mutate(
+        variable = case_when(
+            variable == "Parks" ~ "Parciau",
+            variable == "Residential" ~ "Ardaloedd  preswyl",
+            variable == "Public transport" ~ "Trafnidiaeth gyhoeddus",
+            variable == "Retail and recreation" ~ "Siopa a hamdden",
+            variable == "Supermarkets and pharmacy" ~ "Archfarchnadoedd a fferyllfeydd",
+            variable == "Workplaces" ~ "Gweithleoedd"
+        )
+    )
+
+google_nation_rolling_average <- google_nation_rolling_average %>%
+    mutate(
+        REGION_NM = case_when(
+            REGION_NM == "England" ~ "Lloegr",
+            REGION_NM == "Wales" ~ "Cymru",
+            REGION_NM == "Scotland" ~ "Yr Alban",
+            REGION_NM == "Northern Ireland" ~ "Gogledd Iwerddon"
+        )
+    )
+
+apple_nations_rolling_average <- apple_nations_rolling_average %>%
+    mutate(
+        region = case_when(
+            region == "England" ~ "Lloegr",
+            region == "Wales" ~ "Cymru",
+            region == "Scotland" ~ "Yr Alban",
+            region == "Northern Ireland" ~ "Gogledd Iwerddon",
+            region == "United Kingdom" ~ "Y Deyrnas Unedig"
+        ),
+        transportation_type = case_when(
+            transportation_type == "driving" ~ "gyrru",
+            transportation_type == "transit" ~ "cludiant",
+            transportation_type == "walking" ~ "cerdded"
+        )
+    )
+
+apple_cities_rolling_average <- apple_cities_rolling_average %>%
+    mutate(
+        region = case_when(
+            region == "Cardiff" ~ "Caerdydd",
+            region == "Bristol" ~ "Bryste"
+        ),
+        transportation_type = case_when(
+            transportation_type == "driving" ~ "gyrru",
+            transportation_type == "transit" ~ "tramwy",
+            transportation_type == "walking" ~ "cerdded"
+        )
+    )
+
+facebook_rolling_average <- facebook_rolling_average %>%
+    mutate(
+        polygon_name = case_when(
+            polygon_name == "England" ~ "Lloegr",
+            polygon_name == "Wales" ~ "Cymru",
+            polygon_name == "Scotland" ~ "Yr Alban",
+            polygon_name == "Northern Ireland" ~ "Gogledd Iwerddon",
+        )
+    )
+```
+<br>
+
+## **Cyflwyniad**
+Mae’r siartiau hyn yn dangos sut mae symudedd wedi newid yng Nghymru yn ystod y pandemig COVID-19 gan ddefnyddio data a ryddhawyd gan [Apple](https://covid19.apple.com/mobility), [Facebook](https://data.humdata.org/dataset/movement-range-maps) a [Google](https://www.google.com/covid19/mobility/). Defnyddiwyd cyfartaledd 7 diwrnod ym mhob enghraifft. 
+
+<br>
+
+
+### **Data symudedd Google**
+<br>
+Mae’r siartiau hyn yn dangos newidiadau mewn symudedd ar gyfer y rheini sy’n defnyddio mapiau Google. Mae’r wybodaeth yn cael ei chreu gyda setiau data cyfanredol, dienw oddi wrth ddefnyddwyr sydd wedi galluogi’r gosodiad ar eu dyfeisiau symudol sy’n dangos eu lleoliad. Y gwerth canolrifol yw’r gwaelodlin, ar gyfer y diwrnod cyfatebol o’r wythnos, yn ystod y cyfnod 5 wythnos o 3 Ionawr - 6 Chwefror 2020. Mae’r data yn dangos newidiadau sydd wedi’u dadansoddi yn ôl chwe maes: siopa a hamdden, parciau, archfarchnadoedd a fferyllfeydd, gweithleoedd, preswyl a thrafnidiaeth gyhoeddus. Mae’r data ar gael ar gyfer ardaloedd awdurdodau lleol yng Nghymru. Defnyddir cyfartaledd o’r rhain i ddod o hyd i ffigur ar gyfer Cymru. Nid yw’r data yn cael eu pwysoli gan ystyried maint pob awdurdod lleol - nid yw’r wybodaeth honno ar gael gan Google, yr un beth sy’n cael ei ddangos yw’r newid cymharol.
+<br>
+
+```{r}
+google_plot_wales <- google_wales_rolling_avg %>%
+    ggplot(aes(x = date, y = rolling_avg, color = variable)) +
+    geom_line(size = 1) +
+    labs(
+        x = "Dyddiad",
+        y = "% newid o'r gwaelodlin",
+        title = "Newid mewn symudedd o'r gwaelodlin - Cyfartaledd awdurdodau lleol Cymru 
+        (cyfartaledd treigl 7 diwrnod)",
+        color = "Mesur\n",
+        caption = "Ffynhonnell: Adroddiadau ar Symudedd Cymunedol COVID-19 Google, Google LLC.",
+        color = ""
+    ) +
+    theme_minimal() +
+    theme(
+       legend.position = "bottom",
+       plot.title = element_text(hjust = 0.5),
+       panel.grid.major.x = element_blank(),
+       panel.grid.minor.x = element_blank(),
+       panel.grid.minor.y = element_blank()
+    ) +
+    scale_x_date(date_breaks = "1 month", date_labels = "%B") +
+    scale_y_continuous(breaks = seq(-100, 100, by = 25)) +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "grey", size = 1) +
+    guides(color = guide_legend(override.aes = list(size = 2)))
+
+google_plot_wales
+```
+
+<br>
+
+```{r}
+google_plot_nation <- google_nation_rolling_average %>%
+    ggplot(aes(x = date, y = rolling_avg, color = REGION_NM)) +
+    geom_line(size = 1) +
+    labs(
+        x = "Dyddiad",
+        y = "% newid o'r gwaelodlin",
+        title = "Newid mewn symudedd o'r gwaelodlin - cyfartaledd yr ardaloedd ym mhob gwlad 
+        (cyfartaledd treigl 7 diwrnod)",
+        color = "",
+        caption = c('Ffynhonnell: Adroddiadau ar Symudedd Cymunedol COVID-19 Google, Google LLC.',
+                    'Yn seiliedig ar gyfartaledd yr holl fesurau')
+    ) +
+    theme_minimal() +
+    theme(
+        legend.position = "bottom",
+        plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust=c(1, 0)),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.minor.y = element_blank()
+    ) +
+    scale_x_date(date_breaks = "1 month", date_labels = "%B") +
+    scale_y_continuous(breaks = seq(-100, 20, by = 10)) +
+    scale_color_manual(
+        breaks = c("Lloegr", "Cymru", "Yr Alban", "Gogledd Iwerddon"),
+        values = c("#F8766D", "#C77CFF", "#00BF7D", "#00B0F6")
+    ) +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "grey", size = 1) +
+    guides(color = guide_legend(override.aes = list(size = 2)))
+
+google_plot_nation
+
+```
+
+<br>
+<br>
+<br>
+
+### **Data symudedd Apple**
+<br>
+Mae’r siartiau hyn yn dangos ceisiadau i gynllunio teithiau gan ddefnyddio gwahanol ddulliau teithio ar gyfer y rheini sy’n defnyddio mapiau Apple. Mae’n cynnwys cerdded, gyrru a thrafnidiaeth cyhoeddus (cludiant). 13 Ionawr yw’r gwaelodlin. Cynhyrchir y data drwy gyfrif nifer y ceisiadau i mapiau Apple am gyfarwyddiadau mewn siroedd / rhanbarthau, is-ranbarthau a dinasoedd dethol. Maent i’w cael ar gyfer pob un o’r pedair gwlad a rhai dinasoedd yn y DU, gan gynnwys Caerdydd.  
+<br>
+
+```{r}
+apple_plot_nations <- apple_nations_rolling_average %>%
+    ggplot(aes(x = date, y = rolling_avg, color = region)) +
+    geom_line(size = 1) +
+    labs(
+        x = "Dyddiad",
+        y = "Mynegai'r ceisiadau a wnaed\n (Ionawr 13eg = 100)",
+        title = "Data symudedd Apple ar gyfer y DU
+        (cyfartaledd treigl 7 diwrnod)",
+        color = "",
+        caption = c(
+            "Ffynhonnell: Apple",
+            "13 Ionawr yw’r gwaelodlin (mae’r newid yn cymharu â nifer y ceisiadau y diwrnod hwnnw)"
+        )
+    ) +
+    scale_x_date(date_labels = "%B") +
+    scale_color_manual(
+        breaks = c("Lloegr", "Cymru", "Yr Alban", "Gogledd Iwerddon", "Y Deyrnas Unedig"),
+        values = c("#F8766D", "#C77CFF", "#00BF7D", "#00B0F6", "#B79F00")
+    ) +
+    theme_bw() +
+    theme(
+        legend.position = "bottom",
+        plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust=c(1, 0)),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.minor.y = element_blank()
+    ) +
+    geom_hline(yintercept = 100, linetype = "dashed", color = "grey", size = 1) +
+    guides(color = guide_legend(override.aes = list(size = 2))) +
+    facet_wrap(~transportation_type)
+
+apple_plot_nations
+```
+<br>
+
+```{r}
+apple_plot_cities <- apple_cities_rolling_average %>%
+    ggplot(aes(x = date, y = rolling_avg, color = region)) +
+    geom_line(size = 1) +
+    labs(
+        x = "Dyddiad",
+        y = "Mynegai'r ceisiadau a wnaed\n (Ionawr 13eg = 100)",
+        color = "",
+        title = "Data symudedd Apple ar gyfer Caerdydd a Bryste 
+        (cyfartaledd treigl 7 diwrnod)",
+        caption = c(
+            "Ffynhonnell: Apple",
+            "13 Ionawr yw’r gwaelodlin (mae’r newid yn cymharu â nifer y ceisiadau y diwrnod hwnnw)"
+        )
+    ) +
+    #scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+    theme_bw() + 
+    theme(
+        legend.position = "bottom",
+        plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust=c(1, 0)),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.minor.y = element_blank()
+    ) +
+    scale_x_date(date_breaks = "3 months", date_labels = "%B") +
+    geom_hline(yintercept = 100, linetype = "dashed", color = "grey", size = 1) +
+    guides(color = guide_legend(override.aes = list(size = 2))) +
+    facet_wrap(~transportation_type)
+
+apple_plot_cities
+```
+<br>
+<br>
+<br>
+
+### **Data symudedd Facebook**
+<br>
+Mae’r siartiau hyn yn dangos newidiadau mewn symudedd defnyddwyr Facebook. Dim ond y bobl hynny a fydd wedi dewis galluogi’r gosodiad ar eu dyfeisiau symudol sy’n dangos eu lleoliad ac sy’n caniatáu i ddata am eu lleoliad gael eu defnyddio yn y cefndir sydd wedi cael eu cynnwys. Y cyfnod o 22 - 29 Chwefror yw’r gwaelodlin ac mae’r newidiadau yn cymharu â’r un diwrnod o’r wythnos yn ystod y cyfnod hwnnw. Defnyddir dau fetrig, Newid mewn Symudedd ac Aros yn yr Unfan, sy’n darparu persbectif sydd ychydig yn wahanol ar dueddiadau mewn symudedd. Mae Newid mewn Symudedd yn edrych ar faint y mae pobl yn symud o gwmpas ac yn ei gymharu â chyfnod gwaelodlin sy’n syrthio cyn i’r mesurau cadw pellter cymdeithasol gael eu gweithredu. Mae Aros yn yr Unfan yn edrych ar y ffracsiwn o’r boblogaeth yr ymddengys ei fod yn aros o fewn un ardal fach am ddiwrnod cyfan. Mae data i’w cael ar gyfer pob un o’r pedair gwlad. 
+<br>
+```{r}
+facebook_plot_stay_put <- facebook_rolling_average %>%
+    filter(variable == "all_day_ratio_single_tile_users") %>%
+    ggplot(aes(x = ds, y = rolling_avg, color = polygon_name)) +
+    geom_line(size = 1) +
+    labs(
+        x = "Dyddiad",
+        y = "",
+        color = "",
+        title = "Canran y defnyddwyr Facebook yn 'aros yn yr unfan' 
+        (cyfartaledd treigl 7 diwrnod)",
+        caption = c(
+            "Ffynhonnell: Facebook",
+            "Mae hyn yn seiliedig ar % y bobl sy’n aros/a arhosodd mewn un lleoliad (tua 600m2) am 24 awr"
+        )
+    ) +
+    theme_minimal() + 
+    theme(
+        legend.position = "bottom",
+        plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust=c(1, 0)),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.minor.y = element_blank()
+    ) +
+    scale_x_date(date_breaks = "1 month", date_labels = "%B") +
+    scale_y_continuous(limits = c(0, 0.5), labels = scales::percent_format(accuracy = 1)) +
+    scale_color_manual(
+        breaks = c("Lloegr", "Cymru", "Yr Alban", "Gogledd Iwerddon"),
+        values = c("#F8766D", "#C77CFF", "#00BF7D", "#00B0F6")
+    ) +
+    guides(color = guide_legend(override.aes = list(size = 2)))
+
+facebook_plot_stay_put
+
+```
+<br>
+
+```{r}
+facebook_plot_move <- facebook_rolling_average %>%
+    filter(variable == "all_day_bing_tiles_visited_relative_change") %>%
+    ggplot(aes(x = ds, y = rolling_avg, color = polygon_name)) +
+    geom_line(size = 1) +
+    labs(
+        x = "Dyddiad",
+        y = "",
+        color = "",
+        title = "Newid mewn symudedd defnyddwyr Facebook o'i gymharu â’r gwaelodlin 
+        (cyfartaledd treigl 7 diwrnod)",
+        caption = c(
+            "Ffynhonnell: Facebook",
+            "Y newid o'i gymharu â'r un diwrnod ym mis Chwefror \nyw’r gwaelodlin ac mae’n edrych ar symudedd (nifer \ny teils Bing y mae’r defnyddiwr yn ymddangos ynddynt)"
+        )
+    ) +
+    scale_x_date(date_breaks = "1 month", date_labels = "%B") +
+    scale_y_continuous(limits = c(-0.6, 0.1), labels = scales::percent_format(accuracy = 1)) +
+    scale_color_manual(
+        breaks = c("Lloegr", "Cymru", "Yr Alban", "Gogledd Iwerddon"),
+        values = c("#F8766D", "#C77CFF", "#00BF7D", "#00B0F6")
+    ) +
+    theme_minimal() + 
+    theme(
+        legend.position = "bottom",
+        plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust=c(1, 0)),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.minor.y = element_blank()
+    ) +
+    geom_hline(yintercept = 0, linetype = 'dashed', color = 'grey') +
+    guides(color = guide_legend(override.aes = list(size = 2)))
+
+facebook_plot_move
+```
+
+```{r}
+# Save images files
+save_mobility_plot <- function(plot) {
+     
+    name <- paste0("images/", deparse(substitute(plot)), "_", Sys.Date(), "_W", ".jpg")
+    ggsave(name, plot = plot)
+}
+
+if (save_plots_to_jpg == TRUE) {
+    save_mobility_plot(google_plot_wales)
+    save_mobility_plot(google_plot_nation)
+    save_mobility_plot(apple_plot_cities)
+    save_mobility_plot(apple_plot_driving)
+    save_mobility_plot(facebook_plot_move)
+    save_mobility_plot(facebook_plot_stay_put)
+}
+
+```
+
